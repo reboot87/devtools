@@ -1,7 +1,7 @@
 <!-- devtools-agents:begin -->
 # devtools-agents
 
-> 生成工具 `devtools-agents` · 2026-10-20 07:55:51 UTC · env `ec6cc5b841f8`
+> 生成工具 `devtools-agents` · 2026-10-20 08:00:43 UTC · env `ec6cc5b841f8`
 
 ## 快速开始
 
@@ -121,7 +121,6 @@ _自动生成目录与依赖目录已省略。_
 
 - branch: `main`
 - remote: `https://github.com/reboot87/devtools.git`
-- last commit: Generate AGENTS.md from the real development environment
 
 
 ## 给 Agent 的硬性规则

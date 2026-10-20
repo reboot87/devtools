@@ -95,6 +95,13 @@ test('generates a document that states the facts an agent needs', async () => {
   assert.ok(!document.includes('undefined'));
 });
 
+test('the document does not embed the head commit, which would make it stale on every commit', async () => {
+  const dir = await fixtureProject();
+  const snapshot = await collectEnvironment({ root: dir });
+  const document = renderAgentsMd(snapshot, { lang: 'en' });
+  assert.ok(!document.includes(snapshot.git.lastCommit ?? '__no_commit__'));
+});
+
 test('init writes the file and check confirms it is current', async () => {
   const dir = await fixtureProject();
   const code = await runInit({

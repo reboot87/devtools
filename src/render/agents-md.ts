@@ -349,11 +349,12 @@ export function renderAgentsMd(snapshot: EnvSnapshot, options: RenderOptions): s
   }
 
   // ---- git ----------------------------------------------------------------
+  // The head commit is deliberately left out: it changes on every commit and
+  // would make the document permanently stale.
   if (snapshot.git.isRepo) {
     const gitLines = [
       `- branch: \`${snapshot.git.branch ?? 'unknown'}\``,
       snapshot.git.remote ? `- remote: \`${snapshot.git.remote}\`` : '',
-      snapshot.git.lastCommit ? `- last commit: ${snapshot.git.lastCommit}` : '',
       snapshot.git.hooks.length ? `- hooks: ${snapshot.git.hooks.join(', ')}` : '',
     ].filter(Boolean);
     parts.push(section('Git', gitLines.join('\n')));
