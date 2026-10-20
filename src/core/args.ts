@@ -15,6 +15,8 @@ const VALUE_FLAGS = new Set([
   'depth',
   'package',
   'name',
+  'interval',
+  'structure-interval',
 ]);
 
 export function parseArgs(argv: string[]): ParsedArgs {
