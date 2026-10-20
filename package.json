@@ -1,0 +1,39 @@
+{
+  "name": "devtools-agents",
+  "version": "0.1.0",
+  "description": "Read the current development environment and generate a precise AGENTS.md so coding agents never guess where things are.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "devtools": "bin/devtools.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "devtools": "node src/cli.ts",
+    "agents": "node src/cli.ts agents",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test \"test/*.test.ts\"",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "keywords": [
+    "agents",
+    "agents.md",
+    "context",
+    "codegen",
+    "cli",
+    "developer-tools"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}
