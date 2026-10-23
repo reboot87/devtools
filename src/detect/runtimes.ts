@@ -47,6 +47,9 @@ export async function detectRuntimes(root: string, bundle: ManifestBundle): Prom
     const engine = bundle.packageJson.engines?.['node'];
     if (engine) add('node', engine.replace(/^[\^~>=<\s]+/, ''), 'package.json (engines.node)');
     if (bundle.packageJson.type) add('node', undefined, 'package.json (module type)');
+    // Any project with a package.json runs on Node, even without `engines` or
+    // `type`. Without this the runtime section of the document would be empty.
+    if (!engine && !bundle.packageJson.type) add('node', undefined, 'package.json');
   }
   if (bundle.python?.requiresPython) {
     add('python', bundle.python.requiresPython.replace(/^[\^~>=<\s]+/, ''), 'pyproject.toml');

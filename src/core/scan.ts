@@ -150,6 +150,10 @@ export async function scanProject(root: string, options: ScanOptions = {}): Prom
     }
   };
 
+  /** True when at least one counted file lives below this directory. */
+  const hasFiles = (rel: string) =>
+    files.some((file) => file.startsWith(`${rel}/`));
+
   const walkTree = async (dir: string, relDir: string, depth: number) => {
     if (depth > treeDepth) return;
     const entries = (await listDir(dir)).filter((e) => {
@@ -167,6 +171,10 @@ export async function scanProject(root: string, options: ScanOptions = {}): Prom
       const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
       if (excluded.has(rel)) continue;
       if (entry.isDirectory()) {
+        // A directory whose only content is excluded is not part of the
+        // environment: showing it would make the snapshot depend on the
+        // tool's own output.
+        if (!hasFiles(rel)) continue;
         tree.push(`${'  '.repeat(depth)}${entry.name}/`);
         await walkTree(path.join(dir, entry.name), rel, depth + 1);
       } else {
@@ -201,7 +209,8 @@ export async function scanProject(root: string, options: ScanOptions = {}): Prom
 
   return {
     files,
-    dirs: [...dirs].sort(),
+    // Documented contract: only directories that contain at least one file.
+    dirs: [...dirs].filter((dir) => hasFiles(dir)).sort(),
     dirFileCounts,
     extensionCounts,
     tree,

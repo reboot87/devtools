@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { detectFrameworks } from '../src/detect/frameworks.ts';
 import { deriveCommands } from '../src/detect/commands.ts';
+import { detectRuntimes } from '../src/detect/runtimes.ts';
 import { pythonRequirementName } from '../src/detect/manifests.ts';
 import type { ManifestBundle } from '../src/detect/manifests.ts';
 import type { PackageManagerInfo } from '../src/core/types.ts';
@@ -80,4 +84,40 @@ test('falls back to ecosystem defaults when no script exists', () => {
 test('never invents a test command when nothing indicates one', () => {
   const commands = deriveCommands(bundle(), undefined, []);
   assert.equal(commands.find((command) => command.purpose === 'test'), undefined);
+});
+
+test('reports node as the runtime of a plain package.json project', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'devtools-runtimes-'));
+  await writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'plain' }));
+
+  const runtimes = await detectRuntimes(
+    root,
+    bundle({ packageJson: { name: 'plain', scripts: {}, dependencies: {}, devDependencies: {} } }),
+  );
+
+  const node = runtimes.find((runtime) => runtime.name === 'node');
+  assert.ok(node, 'node runtime must be reported for a package.json project');
+  assert.ok(node.version, 'node runtime must carry a version');
+  assert.ok(node.files.includes('package.json'));
+});
+
+test('prefers the engines field over the ambient node version', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'devtools-runtimes-'));
+
+  const runtimes = await detectRuntimes(
+    root,
+    bundle({
+      packageJson: {
+        name: 'pinned',
+        scripts: {},
+        dependencies: {},
+        devDependencies: {},
+        engines: { node: '22.18.0' },
+      },
+    }),
+  );
+
+  const node = runtimes.find((runtime) => runtime.name === 'node');
+  assert.equal(node?.version, '22.18.0');
+  assert.ok(node?.files.includes('package.json (engines.node)'));
 });

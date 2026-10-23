@@ -2,7 +2,8 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { collectEnvironment } from '../core/env.ts';
 import { renderAgentsMd } from '../render/agents-md.ts';
-import { writeAgentsMd, writeMirrors, MIRROR_TARGETS, type MirrorTarget } from '../render/write.ts';
+import { writeAgentsMd, writeMirrors, MIRROR_TARGETS, readManagedBlock, type MirrorTarget } from '../render/write.ts';
+import { readTextIfExists } from '../util/fsx.ts';
 import { planInstall, runInstall } from '../install/deps.ts';
 import { resolveLang, type Lang } from '../i18n.ts';
 import { flagBoolean, flagString, type ParsedArgs } from '../core/args.ts';
@@ -57,7 +58,12 @@ export async function runInit(options: InitOptions): Promise<number> {
   log(`✓ ${path.relative(process.cwd(), target) || target} ${result.action} (env ${snapshot.fingerprint})`);
 
   if (options.mirrors.length) {
-    const mirrors = await writeMirrors(snapshot.root, body, options.mirrors, options.lang);
+    // Mirror the block that was actually written: when the environment did not
+    // change the previous block (and its timestamp) is kept, so mirroring that
+    // instead of the fresh rendering keeps the mirrors byte-stable as well.
+    const written = (await readTextIfExists(target)) ?? '';
+    const mirrorBody = readManagedBlock(written)?.block.trim() ?? body;
+    const mirrors = await writeMirrors(snapshot.root, mirrorBody, options.mirrors, options.lang);
     for (const mirror of mirrors) {
       log(`✓ ${path.relative(process.cwd(), mirror.path)} ${mirror.action}`);
     }

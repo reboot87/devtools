@@ -28,6 +28,7 @@ Options:
                         (claude, gemini, copilot, cursor - comma separated)
   --self-install       Install devtools-agents into the project as a dev dependency
   --json               Machine readable output (print, check)
+  --fix                Repair the document when check finds it out of date
   --quiet              Only print errors
   --timeout <seconds>  Timeout for a single install command
   -h, --help           Show this help

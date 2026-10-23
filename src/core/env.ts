@@ -30,6 +30,20 @@ const ROOT_MARKERS = [
   'CMakeLists.txt',
 ];
 
+/**
+ * Files this tool writes itself. They describe the environment rather than
+ * belong to it, so they must never influence the snapshot - otherwise
+ * `init --mirror` would read its own output back as a change on the next run
+ * and rewrite the document it just declared current.
+ */
+export const SELF_ARTIFACTS = [
+  '.devtools',
+  'CLAUDE.md',
+  'GEMINI.md',
+  '.github/copilot-instructions.md',
+  '.cursor/rules/devtools-agents.mdc',
+];
+
 export interface CollectOptions {
   /** Explicit project root. When omitted it is derived from the current directory. */
   root?: string;
@@ -39,24 +53,25 @@ export interface CollectOptions {
   exclude?: string[];
 }
 
-/** Walks up from `start` and returns the outermost directory that looks like a project root. */
+/**
+ * Walks up from `start` and returns the nearest directory that looks like a
+ * project root. Walking to the outermost match instead would let a stray
+ * `package.json` in a home or temp directory turn `devtools agents init` into a
+ * scan of that whole directory tree.
+ */
 export async function findProjectRoot(start: string): Promise<string> {
   let current = path.resolve(start);
-  let outermost: string | undefined;
 
   for (;;) {
     for (const marker of ROOT_MARKERS) {
-      if (await exists(path.join(current, marker))) {
-        outermost = current;
-        break;
-      }
+      if (await exists(path.join(current, marker))) return current;
     }
     const parent = path.dirname(current);
     if (parent === current) break;
     current = parent;
   }
 
-  return outermost ?? path.resolve(start);
+  return path.resolve(start);
 }
 
 export async function collectEnvironment(options: CollectOptions = {}): Promise<EnvSnapshot> {
@@ -64,7 +79,7 @@ export async function collectEnvironment(options: CollectOptions = {}): Promise<
 
   const scan = await scanProject(root, {
     treeDepth: options.treeDepth ?? 2,
-    exclude: options.exclude ?? [],
+    exclude: [...SELF_ARTIFACTS, ...(options.exclude ?? [])],
   });
   const bundle = await detectManifests(root);
   const runtimes = await detectRuntimes(root, bundle);

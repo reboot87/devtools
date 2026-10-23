@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { readTextIfExists } from '../util/fsx.ts';
-import { BEGIN_MARKER, END_MARKER, humanNotesSection } from './agents-md.ts';
+import { BEGIN_MARKER, END_MARKER, humanNotesSection, normalizeForComparison } from './agents-md.ts';
 import type { Lang } from '../i18n.ts';
 
 export type WriteAction = 'created' | 'updated' | 'unchanged' | 'merged';
@@ -15,53 +15,84 @@ function wrap(body: string): string {
   return `${BEGIN_MARKER}\n${body.trim()}\n${END_MARKER}`;
 }
 
+/** The environment fingerprint embedded in the generated header. */
+function fingerprintOf(body: string): string | undefined {
+  return body.match(/env `([0-9a-f]+)`/)?.[1];
+}
+
 /**
  * Writes the generated block into `targetPath`.
  *
- * - missing file            -> created with the managed block and a free-form notes section
- * - file with markers       -> the block is replaced, everything else is preserved
- * - file without markers    -> the block is appended, the existing text is preserved
+ * - missing file           -> created with the managed block and a free-form notes section
+ * - complete managed block -> the block is replaced, everything else is preserved
+ * - truncated begin marker -> the stray marker is repaired into a complete block
+ * - file without markers   -> the block is appended, the existing text is preserved
  */
 export async function writeAgentsMd(
   targetPath: string,
   body: string,
   options: { lang: Lang; force?: boolean },
 ): Promise<WriteResult> {
-  const block = wrap(body);
   const existing = await readTextIfExists(targetPath);
 
   if (existing === undefined) {
-    const content = `${block}\n\n${humanNotesSection(options.lang)}`;
+    const content = `${wrap(body)}\n\n${humanNotesSection(options.lang)}\n`;
     await fs.writeFile(targetPath, content, 'utf8');
     return { path: targetPath, action: 'created' };
   }
+
+  const managed = readManagedBlock(existing);
+  const begin = existing.indexOf(BEGIN_MARKER);
+  // Opening marker without a closing one: a truncated or hand edited block.
+  // Repairing it in place is better than appending a second block and leaving
+  // the stray marker behind, which would confuse every later read.
+  const truncated = managed === undefined && begin !== -1;
+  const previousBlock = managed?.block ?? '';
+
+  // Keep the previous block when the environment did not change, so that
+  // regenerating an unchanged project leaves the file untouched. The
+  // generation timestamp is ignored by the comparison, so it does not count
+  // as a change on its own.
+  const bodyReusesExisting =
+    managed !== undefined &&
+    fingerprintOf(previousBlock) === fingerprintOf(body) &&
+    normalizeForComparison(previousBlock) === normalizeForComparison(body);
+
+  const block = wrap(bodyReusesExisting ? previousBlock.trim() : body);
 
   if (options.force) {
     await fs.writeFile(targetPath, block, 'utf8');
     return { path: targetPath, action: 'updated' };
   }
 
-  const begin = existing.indexOf(BEGIN_MARKER);
-  const end = existing.indexOf(END_MARKER);
-
-  if (begin !== -1 && end !== -1 && end > begin) {
-    const before = existing.slice(0, begin);
-    const after = existing.slice(end + END_MARKER.length);
-    const next = `${before}${block}${after}`;
-    if (next === existing) return { path: targetPath, action: 'unchanged' };
-    await fs.writeFile(targetPath, next, 'utf8');
-    return { path: targetPath, action: 'updated' };
+  let next: string;
+  if (managed !== undefined) {
+    next = `${managed.before}${block}${managed.after}`;
+  } else if (truncated) {
+    next = `${existing.slice(0, begin)}${block}${existing.slice(begin + BEGIN_MARKER.length)}`;
+  } else {
+    const separator = existing.endsWith('\n') ? '\n' : '\n\n';
+    next = `${existing}${separator}${block}`;
   }
 
-  // No managed block yet: keep the human content and append ours.
-  const separator = existing.endsWith('\n') ? '\n' : '\n\n';
-  const next = `${existing}${separator}${block}`;
+  if (next === existing) return { path: targetPath, action: 'unchanged' };
   await fs.writeFile(targetPath, next, 'utf8');
-  return { path: targetPath, action: 'merged' };
+  return { path: targetPath, action: 'updated' };
+}
+
+/** Extracts the managed block from an existing file (if it has valid markers). */
+export function readManagedBlock(existing: string): { block: string; before: string; after: string } | undefined {
+  const begin = existing.indexOf(BEGIN_MARKER);
+  const end = existing.indexOf(END_MARKER);
+  if (begin === -1 || end === -1 || end <= begin) return undefined;
+  return {
+    block: existing.slice(begin + BEGIN_MARKER.length, end),
+    before: existing.slice(0, begin),
+    after: existing.slice(end + END_MARKER.length),
+  };
 }
 
 export type MirrorTarget = 'claude' | 'gemini' | 'copilot' | 'cursor';
-
 export const MIRROR_TARGETS: MirrorTarget[] = ['claude', 'gemini', 'copilot', 'cursor'];
 
 export interface MirrorResult {
@@ -108,19 +139,25 @@ export async function writeMirrors(
       const absolute = path.join(root, '.github', 'copilot-instructions.md');
       await fs.mkdir(path.dirname(absolute), { recursive: true });
       const existing = await readTextIfExists(absolute);
-      const content = `${body.trim()}\n`;
-      if (existing === content) {
-        results.push({ target, path: absolute, action: 'unchanged' });
-        continue;
-      }
+      // Same managed block as AGENTS.md, so a refresh replaces the previous
+      // copy instead of appending another one on every run.
+      const block = wrap(body);
       if (existing === undefined) {
-        await fs.writeFile(absolute, content, 'utf8');
+        await fs.writeFile(absolute, `${block}\n`, 'utf8');
         results.push({ target, path: absolute, action: 'created' });
         continue;
       }
+      const managed = readManagedBlock(existing);
       const separator = existing.endsWith('\n') ? '\n' : '\n\n';
-      await fs.writeFile(absolute, `${existing}${separator}${content}`, 'utf8');
-      results.push({ target, path: absolute, action: 'merged' });
+      const next = managed
+        ? `${managed.before}${block}${managed.after}`
+        : `${existing}${separator}${block}\n`;
+      if (next === existing) {
+        results.push({ target, path: absolute, action: 'unchanged' });
+        continue;
+      }
+      await fs.writeFile(absolute, next, 'utf8');
+      results.push({ target, path: absolute, action: managed ? 'updated' : 'merged' });
       continue;
     }
 

@@ -61,6 +61,7 @@ devtools agents watch     # 监听项目变化，自动刷新 AGENTS.md
 | `--mirror <list>` | 同时写入其他 agent 约定：`claude`、`gemini`、`copilot`、`cursor` |
 | `--self-install` | 把 `devtools-agents` 装进当前项目的 devDependencies |
 | `--json` | 机器可读输出（`print` / `check`） |
+| `--fix` | 仅在 `check` 上使用：发现漂移时直接就地修复并返回 `0` |
 | `--timeout <秒>` | 单条安装命令的超时时间 |
 
 ---
@@ -99,6 +100,7 @@ devtools agents watch     # 监听项目变化，自动刷新 AGENTS.md
 - 标记块**之外**的内容永远不会被覆盖，可以放心写项目专属说明
 - 重新生成是幂等的：环境没变就不会动文件
 - `check` 会比较当前环境与文档内容，漂移时返回退出码 `1`（适合放进 CI）
+- `check --fix` 发现漂移时直接用同一套写入逻辑修好文档，手写内容照样保留，返回退出码 `0`
 
 文档包含的章节：
 
