@@ -1,7 +1,7 @@
 <!-- devtools-agents:begin -->
 # devtools-agents
 
-> 生成工具 `devtools-agents` · 2026-10-20 08:00:43 UTC · env `ec6cc5b841f8`
+> 生成工具 `devtools-agents` · 2026-10-23 08:57:41 UTC · env `43f5e0117578`
 
 ## 快速开始
 
@@ -20,7 +20,7 @@
 - 运行时: **node** 22.18.0 (package.json (engines.node), package.json (module type))
 - 包管理器: **npm** — `package-lock.json`
 - 框架与库: **TypeScript** `^5.8.3` (type system)
-- 语言构成: TypeScript (30 files, 97%) · JavaScript (1 files, 3%)
+- 语言构成: TypeScript (32 files, 97%) · JavaScript (1 files, 3%)
 - Manifests: `package.json` (devtools-agents)
 
 
@@ -29,8 +29,8 @@
 | 目录 | 用途 | 文件数 |
 | --- | --- | --- |
 | `bin/` | 脚本与工具 | 1 |
-| `src/` | 源码 | 26 |
-| `test/` | 测试代码 | 4 |
+| `src/` | 源码 | 27 |
+| `test/` | 测试代码 | 5 |
 
 ```
 bin/
@@ -38,6 +38,7 @@ bin/
 src/
   commands/
     check.ts
+    hook.ts
     init.ts
     install.ts
     print.ts
@@ -71,6 +72,7 @@ src/
 test/
   detect.test.ts
   e2e.test.ts
+  hook.test.ts
   toml.test.ts
   writer.test.ts
 .gitignore

@@ -5,6 +5,7 @@ import { parseCheckOptions, runCheck } from './commands/check.ts';
 import { parsePrintOptions, runPrint } from './commands/print.ts';
 import { parseInstallOptions, runInstallCommand } from './commands/install.ts';
 import { parseWatchOptions, runWatch } from './commands/watch.ts';
+import { hookActionName, parseHookOptions, runHookCommand } from './commands/hook.ts';
 
 const VERSION = '0.1.0';
 
@@ -16,6 +17,8 @@ Usage:
   devtools agents print [options]     Print the generated document to stdout
   devtools agents install [options]   Install dependencies with the detected package manager
   devtools agents watch [options]     Keep AGENTS.md in sync while the project changes
+  devtools agents hook [install|uninstall] [options]
+                        Install or remove a pre-commit hook that refreshes AGENTS.md
 
 Options:
   --root <path>        Project root (default: detected from the current directory)
@@ -23,12 +26,13 @@ Options:
   --out <file>         Output file name (default: AGENTS.md)
   --no-install         Do not install dependencies during init
   --dry-run            Print what would happen without changing anything
-  --force              Overwrite AGENTS.md completely, dropping unmanaged content
+  --force              Overwrite the target completely (init: AGENTS.md, hook: the hook file)
   --mirror <list>      Also write the content to other agent conventions
                         (claude, gemini, copilot, cursor - comma separated)
   --self-install       Install devtools-agents into the project as a dev dependency
   --json               Machine readable output (print, check)
   --fix                Repair the document when check finds it out of date
+  --command <cmd>      Command the installed hook runs (default: npx --no-install devtools-agents)
   --quiet              Only print errors
   --timeout <seconds>  Timeout for a single install command
   -h, --help           Show this help
@@ -76,6 +80,17 @@ export async function main(argv: string[]): Promise<void> {
     }
     case 'watch': {
       process.exitCode = await runWatch(parseWatchOptions(args));
+      return;
+    }
+    case 'hook': {
+      const action = args.positionals[2];
+      if (action !== undefined && hookActionName(action) === undefined) {
+        console.error(`unknown hook command: ${action}`);
+        console.log('  use `devtools agents hook install` or `devtools agents hook uninstall`');
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = await runHookCommand(parseHookOptions(args));
       return;
     }
     default: {

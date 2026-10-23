@@ -46,6 +46,7 @@ devtools agents check     # 校验 AGENTS.md 是否仍与当前环境一致（CI
 devtools agents print     # 只打印，不写文件
 devtools agents install   # 只安装依赖
 devtools agents watch     # 监听项目变化，自动刷新 AGENTS.md
+devtools agents hook      # 装一个提交前自动刷新的 git 钩子（等于 hook install）
 ```
 
 ### 常用选项
@@ -62,6 +63,7 @@ devtools agents watch     # 监听项目变化，自动刷新 AGENTS.md
 | `--self-install` | 把 `devtools-agents` 装进当前项目的 devDependencies |
 | `--json` | 机器可读输出（`print` / `check`） |
 | `--fix` | 仅在 `check` 上使用：发现漂移时直接就地修复并返回 `0` |
+| `--command <cmd>` | 仅在 `hook` 上使用：钩子调用 CLI 的命令 |
 | `--timeout <秒>` | 单条安装命令的超时时间 |
 
 ---
@@ -84,6 +86,44 @@ devtools agents watch     # 监听项目变化，自动刷新 AGENTS.md
 
 安装失败会返回非零退出码并打印最后 2000 字符输出，不会吞掉错误。
 不需要时用 `--no-install` 关闭。
+
+---
+
+## 提交前自动刷新
+
+想让文档在提交前就保持最新，装一个 pre-commit 钩子：
+
+```bash
+devtools agents hook install     # 写入 .git/hooks/pre-commit
+```
+
+钩子默认执行 `npx --no-install devtools-agents agents check --fix`，也就是要求项目已经把
+`devtools-agents` 装成 devDependency（`init --self-install` 一步到位）：
+
+```bash
+devtools agents init --self-install
+```
+
+本地还没发布、想直接试用源码时，用 `--command` 指向本地入口：
+
+```bash
+# 在 devtools-agents 自己的仓库里
+devtools agents hook install --command "node <path>/src/cli.ts"
+```
+
+钩子的行为：
+
+- 文档过期 → 就地修复（手写内容保留），并用 `git add -- AGENTS.md` 把修复结果带进这次提交
+- 修复失败 → 返回非零，提交被挡下，不会静默放过
+- 只想跳过这一次 → `git commit --no-verify`
+- 已有其他 pre-commit 钩子 → 追加在它后面，不覆盖；`--force` 才会整体重写
+- 用了 `core.hooksPath` 或 worktree → 通过 `git rev-parse --git-path hooks` 定位，写到正确位置
+
+移除：
+
+```bash
+devtools agents hook uninstall   # 只删自己那段，别人的钩子保留
+```
 
 ---
 
@@ -149,7 +189,7 @@ src/core/               环境聚合、目录扫描、参数解析
 src/detect/             清单 / 运行时 / 框架 / 命令 / 配置 / 环境变量 / git 检测
 src/render/             AGENTS.md 渲染与写入（保留人工内容）
 src/install/            依赖安装计划与执行
-src/commands/           init / check / print / install / watch
+src/commands/           init / check / print / install / watch / hook
 test/                   node:test 用例
 ```
 
