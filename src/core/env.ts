@@ -8,6 +8,7 @@ import { detectConfigs, detectCi } from '../detect/configs.ts';
 import { detectDirs, detectEntryPoints, detectLanguages } from '../detect/structure.ts';
 import { detectEnvVars } from '../detect/envvars.ts';
 import { detectGit } from '../detect/git.ts';
+import { detectToolchain, TOOLCHAIN_CACHE_DIR, TOOLCHAIN_CACHE_FILE } from '../detect/toolchain.ts';
 import { fingerprint } from '../util/hash.ts';
 import { exists } from '../util/fsx.ts';
 import type { EnvSnapshot } from './types.ts';
@@ -51,6 +52,12 @@ export interface CollectOptions {
   treeDepth?: number;
   /** Relative paths that must not influence the result (e.g. the generated file). */
   exclude?: string[];
+  /** Probe the machine toolchain again instead of trusting the cache. */
+  refreshToolchain?: boolean;
+  /** Never read or write the toolchain cache. */
+  noToolchainCache?: boolean;
+  /** Skip the machine toolchain entirely (tests, dry runs). */
+  noToolchain?: boolean;
 }
 
 /**
@@ -99,6 +106,13 @@ export async function collectEnvironment(options: CollectOptions = {}): Promise<
   const ci = await detectCi(root);
   const envVars = await detectEnvVars(root, scan);
   const git = await detectGit(root);
+  const toolchain = options.noToolchain
+    ? { platform: process.platform, detectedAt: new Date().toISOString(), tools: [] }
+    : await detectToolchain({
+        root,
+        refresh: options.refreshToolchain,
+        noCache: options.noToolchainCache,
+      });
 
   const notes: string[] = [];
 
@@ -119,6 +133,11 @@ export async function collectEnvironment(options: CollectOptions = {}): Promise<
 
   if (git.hooks.length) {
     notes.push(`Git hooks installed: ${git.hooks.join(', ')}.`);
+  }
+  if (toolchain.tools.length) {
+    notes.push(
+      `工具链探测于 ${toolchain.detectedAt.slice(0, 19).replace('T', ' ')} UTC，缓存 ${TOOLCHAIN_CACHE_DIR}/${TOOLCHAIN_CACHE_FILE}，需要重新探测时运行 \`devtools agents init --refresh\`。`,
+    );
   }
   if (primary?.selfInstallCommand) {
     notes.push(
@@ -156,6 +175,7 @@ export async function collectEnvironment(options: CollectOptions = {}): Promise<
     ci,
     git,
     languages,
+    toolchain,
     notes,
   };
 
@@ -173,6 +193,9 @@ export async function collectEnvironment(options: CollectOptions = {}): Promise<
     configs: snapshot.configs,
     envVars: snapshot.envVars.map((v) => ({ name: v.name, required: v.required })),
     languages: snapshot.languages,
+    // The toolchain belongs in the fingerprint: a newly installed compiler or
+    // CMake must make the document stale, exactly like a new dependency.
+    toolchain: snapshot.toolchain.tools.map((tool) => [tool.name, tool.version ?? '', tool.path ?? '']),
   });
 
   return snapshot;

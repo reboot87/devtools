@@ -1,4 +1,4 @@
-import type { EnvSnapshot } from '../core/types.ts';
+import type { EnvSnapshot, ToolKind } from '../core/types.ts';
 import { translator, type Lang, type StringId } from '../i18n.ts';
 import type { DirPurpose } from '../detect/structure.ts';
 
@@ -83,6 +83,27 @@ const COMMAND_PURPOSE_LABEL: Record<Lang, Record<string, string>> = {
 
 const PURPOSE_ORDER = ['install', 'dev', 'build', 'start', 'test', 'lint', 'typecheck', 'format', 'release', 'clean'];
 
+const TOOL_KIND_TEXT: Record<Lang, Record<ToolKind, string>> = {
+  zh: {
+    compiler: '编译器',
+    sdk: 'SDK',
+    build: '构建工具',
+    runtime: '运行时',
+    'package-manager': '包 / 依赖管理',
+    framework: '框架 / SDK',
+    tool: '开发工具',
+  },
+  en: {
+    compiler: 'compiler',
+    sdk: 'SDK',
+    build: 'build tool',
+    runtime: 'runtime',
+    'package-manager': 'package manager',
+    framework: 'framework / SDK',
+    tool: 'dev tool',
+  },
+};
+
 function table(headers: string[], rows: string[][]): string {
   if (rows.length === 0) return '';
   const head = `| ${headers.join(' | ')} |`;
@@ -158,6 +179,15 @@ export function buildRules(snapshot: EnvSnapshot, lang: Lang): string[] {
       zh
         ? `这是一个 monorepo（${snapshot.monorepo}），除非明确指定子包，否则在仓库根目录执行命令。`
         : `This is a monorepo (${snapshot.monorepo}); run commands from the repository root unless a specific package is named.`,
+    );
+  }
+
+  const toolNames = [...new Set(snapshot.toolchain.tools.map((tool) => tool.name))];
+  if (toolNames.length) {
+    rules.push(
+      zh
+        ? `本机已安装 ${toolNames.slice(0, 10).join('、')}${toolNames.length > 10 ? ' 等' : ''}，直接使用，不要执行安装命令，也不要满盘搜索它们的安装位置。`
+        : `${toolNames.slice(0, 10).join(', ')}${toolNames.length > 10 ? ' and others' : ''} are already installed on this machine - use them directly instead of installing or searching for them.`,
     );
   }
 
@@ -271,6 +301,22 @@ export function renderAgentsMd(snapshot: EnvSnapshot, options: RenderOptions): s
     stackLines.push(`- Manifests: ${manifestText}`);
   }
   parts.push(section(t('stack'), stackLines.join('\n')));
+
+  // ---- machine toolchain --------------------------------------------------
+  if (snapshot.toolchain.tools.length) {
+    const toolRows = snapshot.toolchain.tools.map((tool) => [
+      `${TOOL_KIND_TEXT[options.lang][tool.kind]} \`${tool.name}\``,
+      tool.version ? `\`${tool.version}\`` : '—',
+      tool.path ? `\`${tool.path}\`` : '—',
+      tool.detail ?? '',
+    ]);
+    parts.push(
+      section(
+        t('toolchain'),
+        `${t('toolchainHint')}\n\n${table([t('tool'), t('version'), t('location'), t('detail')], toolRows)}`,
+      ),
+    );
+  }
 
   // ---- layout -------------------------------------------------------------
   const dirRows = snapshot.dirs.map((dir) => [

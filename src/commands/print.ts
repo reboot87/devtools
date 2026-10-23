@@ -21,7 +21,12 @@ export function parsePrintOptions(args: ParsedArgs): PrintOptions {
 }
 
 export async function runPrint(options: PrintOptions): Promise<number> {
-  const snapshot = await collectEnvironment({ root: options.root, treeDepth: options.treeDepth });
+  const snapshot = await collectEnvironment({
+    root: options.root,
+    treeDepth: options.treeDepth,
+    // `print` must not write anything, so the toolchain cache is read only.
+    noToolchainCache: true,
+  });
 
   if (options.json) {
     console.log(JSON.stringify(snapshot, null, 2));

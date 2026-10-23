@@ -19,6 +19,10 @@ export interface InitOptions {
   selfInstall: boolean;
   timeoutMs?: number;
   quiet: boolean;
+  /** Probe the machine toolchain again instead of using the cache. */
+  refresh: boolean;
+  /** Skip the machine toolchain entirely; used by tests. */
+  noToolchain?: boolean;
 }
 
 export function parseInitOptions(args: ParsedArgs): InitOptions {
@@ -42,6 +46,7 @@ export function parseInitOptions(args: ParsedArgs): InitOptions {
     selfInstall: flagBoolean(args.flags, 'self-install', false),
     timeoutMs: timeout ? Number(timeout) * 1000 : undefined,
     quiet: flagBoolean(args.flags, 'quiet', false),
+    refresh: flagBoolean(args.flags, 'refresh', false),
   };
 }
 
@@ -50,7 +55,12 @@ export async function runInit(options: InitOptions): Promise<number> {
     if (!options.quiet) console.log(message);
   };
 
-  const snapshot = await collectEnvironment({ root: options.root, exclude: [options.outFile] });
+  const snapshot = await collectEnvironment({
+    root: options.root,
+    exclude: [options.outFile],
+    refreshToolchain: options.refresh,
+    noToolchain: options.noToolchain,
+  });
   const body = renderAgentsMd(snapshot, { lang: options.lang, generator: 'devtools-agents' });
 
   const target = path.join(snapshot.root, options.outFile);

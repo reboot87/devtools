@@ -58,6 +58,43 @@ export interface FrameworkInfo {
   source: string;
 }
 
+/** What kind of job a machine wide tool does; the renderer turns it into text. */
+export type ToolKind =
+  | 'compiler'
+  | 'sdk'
+  | 'build'
+  | 'runtime'
+  | 'package-manager'
+  | 'framework'
+  | 'tool';
+
+/**
+ * A tool found on the machine rather than in the project.
+ *
+ * The point of recording these is to stop an agent from installing or hunting
+ * for something that is already there.
+ */
+export interface ToolInfo {
+  /** Display name, e.g. `MSVC`, `CMake`, `Qt`. */
+  name: string;
+  kind: ToolKind;
+  version?: string;
+  /** Absolute file or directory that proves the installation. */
+  path?: string;
+  /** How it was found, e.g. `PATH`, `vswhere`, `C:/Qt`. */
+  source: string;
+  /** Extra fact, e.g. `v143 toolset` or the installed kits. */
+  detail?: string;
+}
+
+export interface ToolchainInfo {
+  /** Machine platform the result belongs to. */
+  platform: string;
+  /** When the tools were last probed, ISO timestamp. */
+  detectedAt: string;
+  tools: ToolInfo[];
+}
+
 export interface ManifestInfo {
   /** Path relative to the project root. */
   path: string;
@@ -164,6 +201,8 @@ export interface EnvSnapshot {
   ci: CiInfo[];
   git: GitInfo;
   languages: LanguageInfo[];
+  /** Tools installed on this machine (compilers, SDKs, build tools). */
+  toolchain: ToolchainInfo;
   /** Free-form observations worth telling an agent about. */
   notes: string[];
 }

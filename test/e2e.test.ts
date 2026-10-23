@@ -127,6 +127,9 @@ test('init writes the file and check confirms it is current', async () => {
     outFile: 'AGENTS.md',
     selfInstall: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
+    refresh: false,
   });
   assert.equal(code, 0);
 
@@ -140,6 +143,8 @@ test('init writes the file and check confirms it is current', async () => {
     outFile: 'AGENTS.md',
     json: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
     fix: false,
   });
   assert.equal(checkCode, 0);
@@ -157,6 +162,9 @@ test('regenerating an unchanged project leaves the file byte for byte identical'
     outFile: 'AGENTS.md',
     selfInstall: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
+    refresh: false,
   };
 
   assert.equal(await runInit(options), 0);
@@ -176,6 +184,8 @@ test('regenerating an unchanged project leaves the file byte for byte identical'
     outFile: 'AGENTS.md',
     json: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
     fix: false,
   });
   assert.equal(checkCode, 0);
@@ -193,6 +203,9 @@ test('mirrors do not feed back into the snapshot on the next run', async () => {
     outFile: 'AGENTS.md',
     selfInstall: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
+    refresh: false,
   };
 
   assert.equal(await runInit({ ...options, mirrors: [...options.mirrors] }), 0);
@@ -203,6 +216,47 @@ test('mirrors do not feed back into the snapshot on the next run', async () => {
   assert.equal(await fs.readFile(path.join(dir, 'AGENTS.md'), 'utf8'), first);
   assert.equal(await fs.readFile(path.join(dir, '.github', 'copilot-instructions.md'), 'utf8'), firstCopilot);
 
+  const checkCode = await runCheck({
+    root: dir,
+    lang: 'en',
+    outFile: 'AGENTS.md',
+    json: false,
+    quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
+    fix: false,
+  });
+  assert.equal(checkCode, 0);
+});
+
+test('records the machine toolchain so an agent does not reinstall it', async () => {
+  const dir = await fixtureProject();
+  const code = await runInit({
+    root: dir,
+    lang: 'en',
+    install: false,
+    dryRun: false,
+    force: false,
+    mirrors: [],
+    outFile: 'AGENTS.md',
+    selfInstall: false,
+    quiet: true,
+    refresh: false,
+  });
+  assert.equal(code, 0);
+
+  const document = await fs.readFile(path.join(dir, 'AGENTS.md'), 'utf8');
+  assert.ok(document.includes('## Installed toolchain (this machine)'));
+  assert.ok(document.includes('runtime `node`'), 'the running node must be reported');
+  assert.ok(document.includes('are already installed on this machine'));
+
+  const cache = JSON.parse(
+    await fs.readFile(path.join(dir, '.devtools', 'toolchain.json'), 'utf8'),
+  ) as { platform: string; tools: unknown[] };
+  assert.equal(cache.platform, process.platform);
+  assert.ok(cache.tools.length > 0);
+
+  // The cached probe must keep the document current on the next run.
   const checkCode = await runCheck({
     root: dir,
     lang: 'en',
@@ -226,6 +280,9 @@ test('check --fix repairs the drift instead of failing', async () => {
     outFile: 'AGENTS.md',
     selfInstall: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
+    refresh: false,
   });
 
   const packageJsonPath = path.join(dir, 'package.json');
@@ -239,6 +296,8 @@ test('check --fix repairs the drift instead of failing', async () => {
     outFile: 'AGENTS.md',
     json: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
   };
 
   assert.equal(await runCheck({ ...checkOptions, fix: false }), 1);
@@ -265,6 +324,8 @@ test('check --fix writes a managed block into a file that has none', async () =>
     outFile: 'AGENTS.md',
     json: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
     fix: true,
   };
 
@@ -283,6 +344,8 @@ test('check --fix restores a missing document', async () => {
     outFile: 'AGENTS.md',
     json: false,
     quiet: true,
+    // Machine tool probing spawns dozens of processes; one test covers it.
+    noToolchain: true,
   };
 
   assert.equal(await runCheck({ ...options, fix: false }), 1);

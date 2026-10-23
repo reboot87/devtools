@@ -32,6 +32,7 @@ Options:
   --self-install       Install devtools-agents into the project as a dev dependency
   --json               Machine readable output (print, check)
   --fix                Repair the document when check finds it out of date
+  --refresh            Probe the machine toolchain again instead of using the cache (init)
   --command <cmd>      Command the installed hook runs (default: npx --no-install devtools-agents)
   --quiet              Only print errors
   --timeout <seconds>  Timeout for a single install command

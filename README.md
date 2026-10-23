@@ -19,6 +19,7 @@ Agent 进入一个陌生仓库时最常见的失败方式：
 | 不知道哪些目录是自动生成的 | 标记 `generated/` 目录并在规则里写明"不要手改" |
 | 改完 `package.json` 后文档过期 | `check` 检测漂移，`watch` 自动刷新 |
 | 项目没有 `AGENTS.md` | `init` 自动创建并写入环境快照 |
+| 机器上已经装了 MSVC / CMake / Qt，AI 却又去下载一遍 | 探测本机工具链，写进文档并明确标注“已安装，直接用” |
 
 ---
 
@@ -64,6 +65,7 @@ devtools agents hook      # 装一个提交前自动刷新的 git 钩子（等�
 | `--json` | 机器可读输出（`print` / `check`） |
 | `--fix` | 仅在 `check` 上使用：发现漂移时直接就地修复并返回 `0` |
 | `--command <cmd>` | 仅在 `hook` 上使用：钩子调用 CLI 的命令 |
+| `--refresh` | 仅在 `init` 上使用：忽略工具链缓存，重新探测本机环境 |
 | `--timeout <秒>` | 单条安装命令的超时时间 |
 
 ---
@@ -86,6 +88,34 @@ devtools agents hook      # 装一个提交前自动刷新的 git 钩子（等�
 
 安装失败会返回非零退出码并打印最后 2000 字符输出，不会吞掉错误。
 不需要时用 `--no-install` 关闭。
+
+---
+
+## 本机工具链探测
+
+`AGENTS.md` 不只描述项目，还描述**这台机器上已经装好了什么**，让 agent 不再重复安装或满盘搜索：
+
+| 类别 | 探测内容 |
+| --- | --- |
+| 编译器 | MSVC（经 `vswhere`，含 toolset 与 `Hostx64\\x64` 路径）、gcc、clang、rustc |
+| SDK | Windows SDK（取 `Windows Kits\\10\\Include` 下最新版本，并注明安装了几个版本） |
+| 构建工具 | CMake、Ninja、MSBuild、make / mingw32-make、cargo；Visual Studio 自带的 CMake / Ninja / MSBuild 也会列出 |
+| 框架 / SDK | Qt（`C:\\Qt\\<version>\\<kit>` 与 `QTDIR`，逐个版本列出 msvc / mingw kit） |
+| 运行时 | node、python、go、java、dotnet、bun、deno |
+| 包 / 依赖管理 | npm、pnpm、yarn、uv、Conan、vcpkg |
+| 开发工具 | git、docker、PowerShell |
+
+探测结果写入文档的「本机已安装的工具链」表格（工具 / 版本 / 路径 / 说明），并在「给 Agent 的硬性规则」里写一条：
+
+> 本机已安装 MSVC、Windows SDK、CMake… ，直接使用，不要执行安装命令，也不要满盘搜索它们的安装位置。
+
+探测结果缓存在 `.devtools/toolchain.json`（默认 6 小时），所以 `check` 和 `watch` 不会反复起进程；换机器或装了新工具后：
+
+```bash
+devtools agents init --refresh
+```
+
+工具链变化会改变 `env` 指纹，`check` 会因此报漂移——这与新增依赖的处理一致。
 
 ---
 

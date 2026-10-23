@@ -14,6 +14,8 @@ export interface CheckOptions {
   quiet: boolean;
   /** Repair the document in place instead of reporting failure. */
   fix: boolean;
+  /** Skip the machine toolchain entirely; used by tests. */
+  noToolchain?: boolean;
 }
 
 export function parseCheckOptions(args: ParsedArgs): CheckOptions {
@@ -71,7 +73,11 @@ function evaluate(existing: string | undefined, expected: string): Evaluation {
 }
 
 export async function runCheck(options: CheckOptions): Promise<number> {
-  const snapshot = await collectEnvironment({ root: options.root, exclude: [options.outFile] });
+  const snapshot = await collectEnvironment({
+    root: options.root,
+    exclude: [options.outFile],
+    noToolchain: options.noToolchain,
+  });
   const file = path.join(snapshot.root, options.outFile);
   const expected = renderAgentsMd(snapshot, { lang: options.lang, generator: 'devtools-agents' });
 

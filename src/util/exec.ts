@@ -21,6 +21,21 @@ const DEFAULT_TIMEOUT = 10 * 60 * 1000;
 const DEFAULT_MAX_OUTPUT = 20_000;
 
 export function runCommand(command: string, opts: RunOptions): Promise<RunResult> {
+  return spawnProcess(command, null, opts);
+}
+
+/**
+ * Runs an executable directly, without a shell.
+ *
+ * Resolution through the shell costs a full `cmd.exe` / `sh` start on every
+ * call, which dominates probing two dozen tools; a direct spawn is orders of
+ * magnitude cheaper and reports a missing binary as ENOENT immediately.
+ */
+export function runBinary(file: string, args: string[], opts: RunOptions): Promise<RunResult> {
+  return spawnProcess(file, args, opts);
+}
+
+function spawnProcess(command: string, args: string[] | null, opts: RunOptions): Promise<RunResult> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT;
   const maxOutput = opts.maxOutput ?? DEFAULT_MAX_OUTPUT;
 
@@ -30,13 +45,20 @@ export function runCommand(command: string, opts: RunOptions): Promise<RunResult
     let timedOut = false;
     let settled = false;
 
-    const child = spawn(command, {
-      cwd: opts.cwd,
-      env: opts.env ?? process.env,
-      shell: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    const child = args
+      ? spawn(command, args, {
+          cwd: opts.cwd,
+          env: opts.env ?? process.env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        })
+      : spawn(command, {
+          cwd: opts.cwd,
+          env: opts.env ?? process.env,
+          shell: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        });
 
     const timer = setTimeout(() => {
       timedOut = true;

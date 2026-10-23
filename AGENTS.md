@@ -1,7 +1,7 @@
 <!-- devtools-agents:begin -->
 # devtools-agents
 
-> 生成工具 `devtools-agents` · 2026-10-23 08:57:41 UTC · env `43f5e0117578`
+> 生成工具 `devtools-agents` · 2026-10-23 09:27:57 UTC · env `83e2a5171bd7`
 
 ## 快速开始
 
@@ -20,8 +20,27 @@
 - 运行时: **node** 22.18.0 (package.json (engines.node), package.json (module type))
 - 包管理器: **npm** — `package-lock.json`
 - 框架与库: **TypeScript** `^5.8.3` (type system)
-- 语言构成: TypeScript (32 files, 97%) · JavaScript (1 files, 3%)
+- 语言构成: TypeScript (34 files, 97%) · JavaScript (1 files, 3%)
 - Manifests: `package.json` (devtools-agents)
+
+
+## 本机已安装的工具链
+
+这些工具在本机已经装好，直接使用。不要执行安装命令，也不要再去找另外一份。
+
+| 工具 | 版本 | 位置 | 说明 |
+| --- | --- | --- | --- |
+| 编译器 `MSVC` | `14.16.27023` | `C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\bin\Hostx64\x64` | Visual Studio Community 2017 · toolset 14.16.27023 |
+| SDK `Windows SDK` | `10.0.17763.0` | `C:\Program Files (x86)\Windows Kits\10\Include` | 2 versions installed |
+| 构建工具 `CMake` | `3.31.5` | `C:\Program Files\CMake\bin\cmake.exe` |  |
+| 构建工具 `Ninja` | — | `C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe` | bundled with Visual Studio |
+| 运行时 `bun` | `1.4.2` | `C:\Users\Administrator\AppData\Roaming\npm\bun.exe` |  |
+| 运行时 `node` | `24.18.0` | `D:\Program Files\nodejs\node.exe` |  |
+| 运行时 `python` | `3.12.0` | `C:\Python312\python.exe` |  |
+| 包 / 依赖管理 `Conan` | `2.33.0` | `C:\Python312\Scripts\conan.exe` |  |
+| 包 / 依赖管理 `npm` | `11.16.0` | `D:\Program Files\nodejs\npm.cmd` |  |
+| 包 / 依赖管理 `pnpm` | `10.32.1` | `C:\Users\Administrator\AppData\Roaming\npm\pnpm.cmd` |  |
+| 开发工具 `git` | `2.56.0` | `C:\Users\Administrator\AppData\Local\Programs\@codebufffreebuff-desktop\resources\git\ucrt64\bin\git.exe` |  |
 
 
 ## 项目结构
@@ -29,8 +48,8 @@
 | 目录 | 用途 | 文件数 |
 | --- | --- | --- |
 | `bin/` | 脚本与工具 | 1 |
-| `src/` | 源码 | 27 |
-| `test/` | 测试代码 | 5 |
+| `src/` | 源码 | 28 |
+| `test/` | 测试代码 | 6 |
 
 ```
 bin/
@@ -57,6 +76,7 @@ src/
     manifests.ts
     runtimes.ts
     structure.ts
+    toolchain.ts
   install/
     deps.ts
   render/
@@ -74,6 +94,7 @@ test/
   e2e.test.ts
   hook.test.ts
   toml.test.ts
+  toolchain.test.ts
   writer.test.ts
 .gitignore
 package-lock.json
@@ -132,8 +153,14 @@ _自动生成目录与依赖目录已省略。_
 - 改动代码后必须执行 `npm run test` 并确保通过。
 - 提交前依次执行 `npm run typecheck`。
 - Node 版本固定为 22.18.0（来源：package.json (engines.node), package.json (module type)）。
+- 本机已安装 MSVC、Windows SDK、CMake、Ninja、bun、node、python、Conan、npm、pnpm 等，直接使用，不要执行安装命令，也不要满盘搜索它们的安装位置。
 - 理解项目时先从入口文件读起：`src/cli.ts`。
 - 修改 `package.json`、脚本或工具链后运行 `devtools agents init` 刷新本文件。
+
+
+## 备注
+
+- 工具链探测于 2026-10-23 09:27:57 UTC，缓存 .devtools/toolchain.json，需要重新探测时运行 `devtools agents init --refresh`。
 
 
 ## 如何保持本文件有效
